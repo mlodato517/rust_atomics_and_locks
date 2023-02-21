@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  # I'm just one person so I don't really care about pushes to `main`
+  # right now - just want to make sure new PRs aren't sloppy.
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Format
+      run: cargo fmt --check
+    - name: Clippy
+      run: cargo clippy --all-targets
+    - name: Setup Miri
+      run: cargo miri setup
+    - name: Run tests with Miri
+      run: cargo miri test --verbose
