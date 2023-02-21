@@ -34,11 +34,6 @@ impl<'a, T> DerefMut for SpinLockGuard<'a, T> {
     }
 }
 
-// SAFETY: If we're sending the lock then we own it - i.e. there are no outstanding guards.
-// In that case, because `UnsafeCell impl Send`, we can also be sent. The lock may be dropped by
-// the other thread which is okay because there are no outstanding borrows.
-unsafe impl<T> Send for SpinLock<T> where T: Send {}
-
 // SAFETY: If we're sharing the lock then the other thread can't get a `T` - only a `&/&mut T` so
 // we just need `T` to be `Sync`. The locking mechanism ensures that two shared versions don't get
 // mutable access concurrently.

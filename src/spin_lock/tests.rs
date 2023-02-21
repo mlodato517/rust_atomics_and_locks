@@ -38,3 +38,19 @@ fn vague_general_test() {
 
     assert_eq!(*lock.lock(), "hello!!");
 }
+
+#[cfg(not(loom))]
+#[test]
+fn test_from_book() {
+    let x = SpinLock::new(Vec::new());
+    std::thread::scope(|s| {
+        s.spawn(|| x.lock().push(1));
+        s.spawn(|| {
+            let mut g = x.lock();
+            g.push(2);
+            g.push(2);
+        });
+    });
+    let g = x.lock();
+    assert!(g.as_slice() == [1, 2, 2] || g.as_slice() == [2, 2, 1]);
+}
