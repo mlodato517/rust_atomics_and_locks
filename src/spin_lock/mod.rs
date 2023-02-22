@@ -34,10 +34,10 @@ impl<'a, T> DerefMut for SpinLockGuard<'a, T> {
     }
 }
 
-// SAFETY: If we're sharing the lock then the other thread can't get a `T` - only a `&/&mut T` so
-// we just need `T` to be `Sync`. The locking mechanism ensures that two shared versions don't get
-// mutable access concurrently.
-unsafe impl<T> Sync for SpinLock<T> where T: Sync {}
+// SAFETY: We need `T: Send` so we can access `&mut T` (and even `&T`!) on another thread. Because
+// the lock ensures exclusive access, we don't need `T: Sync` - that's only required if multiple
+// threads need to concurrently access `&T`.
+unsafe impl<T> Sync for SpinLock<T> where T: Send {}
 
 pub struct SpinLock<T> {
     data: UnsafeCell<T>,
