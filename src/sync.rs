@@ -2,6 +2,7 @@
 pub(crate) mod atomic {
     use std::ops::Deref;
 
+    pub(crate) use loom::sync::atomic::AtomicU32;
     pub(crate) use loom::sync::atomic::Ordering;
 
     pub(crate) struct AtomicBool(loom::sync::atomic::AtomicBool);
@@ -29,6 +30,7 @@ pub(crate) use loom::sync::Arc;
 pub(crate) mod atomic {
     use std::ops::Deref;
 
+    pub(crate) use std::sync::atomic::AtomicU32;
     pub(crate) use std::sync::atomic::Ordering;
 
     pub(crate) struct AtomicBool(std::sync::atomic::AtomicBool);
