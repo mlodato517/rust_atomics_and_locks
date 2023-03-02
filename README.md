@@ -53,6 +53,35 @@ I got plenty of stuff wrong which leaves room for learning!
 - `AtomicBool::get_mut()` is a neat API for when you have `&mut
   self`.
 
+## Chapter 6 - Arc
+
+I read the first part of this chapter before attempting an implementation.
+Again, I'm a terrible reader and there were things to learn even before getting
+to `Weak`!
+
+- It's embarrassing because you already spent a long time learning about this
+  but, remember, `Sync` _does not imply `Send`_. `Sync` means you can have
+  concurrent access across threads. Interestingly enough this _does not mean_
+  you can have access on a single other thread. The main example is
+  transferring ownership and dropping on another thread. It might be safe for
+  multiple threads to concurrently reference the value (i.e. it is `Sync`)
+  while it being unsafe for ownership to pass to another, single thread.
+- You can safely construct a `NonNull` directly from a reference so prefer
+  `NonNull::from(Box::leak(...))` over `unsafe {
+  NonNull::new_unchecked(Box::into_raw(...)) }`.
+- If you're doing the same `unsafe` operation in multiple spots with the same
+  `SAFETY` message, extract a safe, private helper function
+- Aborting the process when we wrap around isn't a great idea - best to do it
+  with some runway. You wouldn't want a `Drop` on another thread to
+  accidentally cause undefined behavior while your first thread was still
+  convincing the process to abort.
+- While you thought you had your head around memory orderings for two different
+  lines of code (thinking about a lock and a critical section with
+  `Acquire`/`Release`), synchronization on a single line of code is trickier.
+  Consider using an atomic `fence` here.
+- Consider an atomic `fence` to "upgrade" your ordering when there is a
+  conditional
+
 [book]: https://marabos.nl/atomics/
 [send-sync-issue]: https://github.com/mlodato517/rust_atomics_and_locks/issues/1
 [send-sync-stackoverflow]: https://stackoverflow.com/a/68708557
