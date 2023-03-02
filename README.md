@@ -92,6 +92,10 @@ few things:
 - Using `(*ptr) = None` to immutably drop the data instead of (roughly)
   `ptr.as_mut().take()` avoids aliased exclusive borrows and is really cool
   too. Miri caught my invalid code which is great.
+- Use a `compare_exchange_weak` loop instead of a single `compare_exchange`
+  when the operation might "be immediately retryable". For example, if we fail
+  to upgrade a `Weak` because we went from 2 to 3 `Arc`s, then that's basically
+  fine - if we try again immediately, we might just succeed.
 
 [book]: https://marabos.nl/atomics/
 [send-sync-issue]: https://github.com/mlodato517/rust_atomics_and_locks/issues/1

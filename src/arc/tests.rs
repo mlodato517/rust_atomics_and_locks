@@ -178,4 +178,44 @@ mod non_loom_tests {
         // the object should've been dropped.
         assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 1);
     }
+
+    #[test]
+    fn weak_test_from_book() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        static NUM_DROPS: AtomicUsize = AtomicUsize::new(0);
+
+        struct DetectDrop;
+
+        impl Drop for DetectDrop {
+            fn drop(&mut self) {
+                NUM_DROPS.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+
+        // Create an Arc with two weak pointers.
+        let x = Arc::new(("hello", DetectDrop));
+        let y = Arc::downgrade(&x);
+        let z = Arc::downgrade(&x);
+
+        let t = std::thread::spawn(move || {
+            // Weak pointer should be upgradable at this point.
+            let y = y.upgrade().unwrap();
+            assert_eq!(y.0, "hello");
+        });
+        assert_eq!(x.0, "hello");
+        t.join().unwrap();
+
+        // The data shouldn't be dropped yet,
+        // and the weak pointer should be upgradable.
+        assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 0);
+        assert!(z.upgrade().is_some());
+
+        drop(x);
+
+        // Now, the data should be dropped, and the
+        // weak pointer should no longer be upgradable.
+        assert_eq!(NUM_DROPS.load(Ordering::Relaxed), 1);
+        assert!(z.upgrade().is_none());
+    }
 }

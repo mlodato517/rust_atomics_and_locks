@@ -25,14 +25,12 @@ struct Inner<T> {
 
 impl<T> Clone for Arc<T> {
     fn clone(&self) -> Self {
-        let inner = self.weak.data();
-
         // There is nothing to synchronize with here. Since we exist, we know the count isn't zero.
         // We _could_ be racing against another thread dropping an `Arc` but, worst case, that
         // drops the count to one. Since there is no code that must have "happened before" this, we
         // can use `Relaxed`.
         let weak = self.weak.clone();
-        if inner.arc_count.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
+        if weak.data().arc_count.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
             eprintln!("Too many Arcs on the dance floor!");
             std::process::abort();
         }
@@ -119,7 +117,9 @@ pub struct Weak<T> {
 
 impl<T> Clone for Weak<T> {
     fn clone(&self) -> Self {
-        self.data().total_count.fetch_add(1, Ordering::Relaxed);
+        if self.data().total_count.fetch_add(1, Ordering::Relaxed) > usize::MAX / 2 {
+            std::process::abort();
+        }
 
         Self { inner: self.inner }
     }
@@ -135,7 +135,7 @@ impl<T> Drop for Weak<T> {
             // inner data.
             // SAFETY: All other owners have this data have been dropped.
             unsafe {
-                drop(Box::from_raw(self.inner.as_mut()));
+                drop(Box::from_raw(self.inner.as_ptr()));
             }
         }
     }
@@ -160,13 +160,23 @@ impl<T> Weak<T> {
         // we're "Acquiring the data to make a new Arc". Also, in terms of reordering, we don't
         // want the creation of the `Arc` to happen before we increment the count. But it isn't
         // obviously important here.
-        let count = arc_count.load(Ordering::Relaxed);
-        let can_upgrade = count > 0
-            && arc_count
-                .compare_exchange(count, count + 1, Ordering::Acquire, Ordering::Relaxed)
-                .is_ok();
+        //
+        // Apparently it's okay for Relaxed on both sides - awesome.
+        let mut count = arc_count.load(Ordering::Relaxed);
+        loop {
+            if count == 0 {
+                return None;
+            }
+            assert!(count < usize::MAX);
+            if let Err(e) =
+                arc_count.compare_exchange(count, count + 1, Ordering::Relaxed, Ordering::Relaxed)
+            {
+                count = e;
+                continue;
+            }
 
-        can_upgrade.then(|| Arc { weak: self.clone() })
+            return Some(Arc { weak: self.clone() });
+        }
     }
 
     fn data(&self) -> &Inner<T> {
