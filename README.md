@@ -82,6 +82,17 @@ to `Weak`!
 - Consider an atomic `fence` to "upgrade" your ordering when there is a
   conditional
 
+### Part 2 - Weak
+
+This part was a doozy. I went through it in a sleepy haze but really enjoyed a
+few things:
+
+- Storing the `Weak` inside the `Arc` so that `Clone` and `Drop` automatically
+  increment/decrement the total count is brilliant.
+- Using `(*ptr) = None` to immutably drop the data instead of (roughly)
+  `ptr.as_mut().take()` avoids aliased exclusive borrows and is really cool
+  too. Miri caught my invalid code which is great.
+
 [book]: https://marabos.nl/atomics/
 [send-sync-issue]: https://github.com/mlodato517/rust_atomics_and_locks/issues/1
 [send-sync-stackoverflow]: https://stackoverflow.com/a/68708557
